@@ -13,9 +13,9 @@ ap.add_argument("-v", "--video", help="path to the video file")
 ap.add_argument("-b", "--buffer", type=int, default=32, help="max buffer size")
 args = vars(ap.parse_args())
 
-# define the lower and upper boundaries of the black shap
+# define the lower and upper boundaries of the black shap (in RGB)
 blackLower = (0, 0, 0)
-blackUpper = (210, 33, 40)
+blackUpper = (60, 60, 60)
 
 # initialize the list of tracked points, the frame counter,
 # and the coordinate deltas
@@ -24,7 +24,7 @@ counter = 0
 (dX, dY) = (0, 0)
 direction = ""
 
-vs = cv2.VideoCapture(args["video"])
+vs = cv2.VideoCapture(args["video"]).cutout(40, 70)
 
 # allow the camera or video file to warm up
 time.sleep(2.0)
@@ -32,7 +32,6 @@ time.sleep(2.0)
 while True:
 
 	frame = vs.read()
-
 	frame = frame[1] if args.get("video", False) else frame
 	
 	if frame is None:
@@ -41,13 +40,13 @@ while True:
 	# color space
 
 	frame = imutils.resize(frame, width=600)
-	blurred = cv2.GaussianBlur(frame, (11, 11), 0)
-	hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
+	blurred = cv2.GaussianBlur(frame, (7, 7), 0)
+	#hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
 
 	# construct a mask for the color "black", then perform
 	# a series of dilations and erosions to remove any small
 	# blobs left in the mask
-	mask = cv2.inRange(hsv, blackLower, blackUpper)
+	mask = cv2.inRange(blurred, blackLower, blackUpper)
 	mask = cv2.erode(mask, None, iterations=2)
 	mask = cv2.dilate(mask, None, iterations=2)
 	# find contours in the mask and initialize the current
@@ -66,7 +65,7 @@ while True:
 		M = cv2.moments(c)
 		center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))
 		# only proceed if the radius meets a minimum size
-		if radius > 10:
+		if radius > 3:
 			# draw the circle and centroid on the frame,
 			# then update the list of tracked points
 			cv2.circle(frame, (int(x), int(y)), int(radius),
